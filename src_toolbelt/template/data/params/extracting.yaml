@@ -1,0 +1,19 @@
+env: local
+files:
+  file_name_1:
+    sheet_id: id
+    sheet_range: A1:H10000
+    sheet_name: name
+    input_path: raw/file_name_1.csv
+    output_path: interim/file_name_1.csv
+    specs:
+      low_memory: False
+      encoding: utf-8
+  file_name_2:
+    query: .sql
+    input_path: raw/file_name_2.csv
+    output_path: interim/file_name_2.csv
+    specs:
+      low_memory: False
+      encoding: utf-8
+      dtype: {}

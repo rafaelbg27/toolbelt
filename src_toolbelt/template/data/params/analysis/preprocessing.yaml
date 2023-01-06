@@ -1,0 +1,42 @@
+---
+drop_columns: []
+rename_meta: {}
+bins_cut_meta: {}
+bins_qcut_meta: {}
+bins_other_meta: {}
+minimum_percentage_meta: {}
+binarizer_meta: {}
+encoder_meta: {}
+transformer_meta:
+  duplicated_flag: {}
+  no_show_flag: {}
+  add: {}
+  subtract: {}
+  round: {}
+  floor: {}
+  multiply: {}
+  divide: {}
+  fix_texts: {}
+default_numerical_missing_columns:
+  - member_care_cost
+  - member_care_cost_hc
+  - member_care_cost_tds
+  - member_monthly_cc
+  - member_monthly_cc_hc
+  - member_monthly_cc_tds
+  - member_monthly_casa_alice_uses
+  - member_monthly_nutri_uses
+  - member_monthly_psico_uses
+  - member_monthly_prepfis_uses
+default_categorical_missing_columns:
+  - lead_selecao_adversa
+  - lead_motivo_selecao_adversa
+  - lead_utm_source
+  - lead_utm_medium
+  - lead_discount_tag
+other_missing_meta:
+  lead_daysdiff_consult_scheduling: no_scheduling
+  lead_daysdiff_consult_completion: no_completion
+default_fill_meta:
+  numerical: 0
+  categorical: missing
