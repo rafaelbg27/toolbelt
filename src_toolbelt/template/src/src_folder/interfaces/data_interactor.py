@@ -9,6 +9,8 @@ from $PROJECT_NAME$ import get_data_path, get_queries_path
 from $PROJECT_NAME$.interfaces.config import Credentials
 from googleapiclient.discovery import build
 from oauth2client.service_account import ServiceAccountCredentials
+from typing import Literal
+from zipfile import ZipFile
 
 
 class WarehouseDataInteractor:
@@ -169,6 +171,16 @@ class StaticDataInteractor:
         df.to_csv(get_data_path(path), index=False, encoding='utf-8')
 
 
+class ZipDataInteractor:
+
+    def __init__(self):
+        ...
+
+    def extract(self, zip_path: str, extract_path: str):
+        with ZipFile(get_data_path(zip_path), 'r') as zip_obj:
+            zip_obj.extractall(get_data_path(extract_path))
+
+
 class GoogleSheetsDataInteractor:
 
     def __init__(self, GOOGLE_CERTIFICATE=Credentials().GOOGLE_CERTIFICATE):
@@ -176,10 +188,17 @@ class GoogleSheetsDataInteractor:
         Create the object with a sheet_id and the path to the json file containing the key
         """
         scopes = ['https://www.googleapis.com/auth/spreadsheets']
-        self.credentials = ServiceAccountCredentials.from_json_keyfile_dict(
-            GOOGLE_CERTIFICATE, scopes)
+        if GOOGLE_CERTIFICATE is not None:
+            self.credentials = ServiceAccountCredentials.from_json_keyfile_dict(
+                GOOGLE_CERTIFICATE, scopes)
+        else:
+            self.credentials = None
 
     def load(self, sheet_id, sheet_range, sheet_name=None):
+        if self.credentials is None:
+            raise Exception(
+                "Google credentials not found. Please check your credentials."
+            )
         sheet_range = '{}!{}'.format(
             sheet_name, sheet_range) if sheet_name else sheet_range
         service = build('sheets', 'v4', credentials=self.credentials)
@@ -259,6 +278,7 @@ class DataInteractor:
 
     def __init__(self):
         self.static = StaticDataInteractor()
+        self.zip = ZipDataInteractor()
         self.sheets = GoogleSheetsDataInteractor()
         self.postgres = PGWarehouseDataInteractor()
         self.redshift = RSWarehouseDataInteractor()
