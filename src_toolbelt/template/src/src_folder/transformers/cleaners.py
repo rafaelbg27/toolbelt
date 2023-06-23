@@ -1,8 +1,8 @@
 import numpy as np
 import pandas as pd
 
-# from $PROJECT_NAME$.interfaces.transformer import Transformer
-# from $PROJECT_NAME$.utils.helper_functions import check_integrity
+from $PROJECT_NAME$.interfaces.transformer import Transformer
+from $PROJECT_NAME$.utils.helper_functions import check_integrity
 
 
 class Cleaner(Transformer):

@@ -1,10 +1,9 @@
 import json
 import os
+from typing import Literal
 
 from dotenv import load_dotenv
-from $PROJECT_NAME$ import get_lib_path
-
-
+from databases import get_lib_path
 
 load_dotenv(get_lib_path('.env'))
 
@@ -14,20 +13,21 @@ class Credentials:
     def __init__(self):
         pass
 
-    def get_credential(self, credential_name: str):
-        if not hasattr(self, credential_name):
-            print('Credential {} not found'.format(credential_name))
-            return None
-        return getattr(self, credential_name)
+    def get_credential(self,
+                       credential_name: str,
+                       credential_type: Literal['str', 'file'] = 'str',
+                       credential_extension: str = 'json'):
+        """
+        Get a credential from the environment
+        """
+        if credential_type == 'str':
+            return os.getenv(credential_name)
 
-    POSTGRES_USER = os.getenv('POSTGRES_USER')
-    POSTGRES_PASSWORD = os.getenv('POSTGRES_PASSWORD')
-    POSTGRES_HOST = os.getenv('POSTGRES_HOST')
-    POSTGRES_PORT = os.getenv('POSTGRES_PORT')
-    POSTGRES_DATABASE = os.getenv('POSTGRES_DATABASE')
-
-    try:
-        with open(get_lib_path('google_sheets_credentials.json')) as read_file:
-            GOOGLE_CERTIFICATE = json.load(read_file)
-    except FileNotFoundError:
-        GOOGLE_CERTIFICATE = None
+        if credential_type == 'file':
+            try:
+                with open(
+                        get_lib_path(credential_name + '.' +
+                                     credential_extension), 'r') as read_file:
+                    return json.load(read_file)
+            except FileNotFoundError:
+                return None

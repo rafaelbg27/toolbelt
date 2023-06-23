@@ -12,7 +12,6 @@ from $PROJECT_NAME$.interfaces.config import Credentials
 from googleapiclient.discovery import build
 from oauth2client.service_account import ServiceAccountCredentials
 
-
 class StaticDataInteractor:
 
     def __init__(self):
@@ -63,8 +62,8 @@ class GoogleSheetsDataInteractor:
         if self.credentials is None:
             raise Exception(
                 "Google credentials not found. Please check your credentials.")
-        sheet_range = '{}!{}'.format(
-            sheet_name, sheet_range) if sheet_name else sheet_range
+        sheet_range = '{}!{}'.format(sheet_name,
+                                     sheet_range) if sheet_name else sheet_range
         service = build('sheets', 'v4', credentials=self.credentials)
         sheet = service.spreadsheets()
         result = sheet.values().get(spreadsheetId=sheet_id,
@@ -102,6 +101,7 @@ class WarehouseDataInteractor:
         self.host = host
         self.port = port
         self.database = database
+        self.engine = None
 
     def run_sql_query(self, query_name, query_params={}):
         """
@@ -141,6 +141,7 @@ class WarehouseDataInteractor:
                   if_exists=if_exists,
                   index=index,
                   method=method)
+        print(f'Table {table_name} inserted successfully on schema {schema}')
         conn.close()
 
     def delete_table(self, table_name: str, schema: str):
@@ -150,6 +151,7 @@ class WarehouseDataInteractor:
         query = f'DROP TABLE IF EXISTS {schema}.{table_name}'
         conn = self.engine.connect()
         conn.execute(query)
+        print(f'Table {table_name} deleted successfully on schema {schema}')
         conn.close()
 
     def create_schema(self, schema: str):
@@ -159,19 +161,21 @@ class WarehouseDataInteractor:
         query = sqlalchemy.text(f'CREATE SCHEMA IF NOT EXISTS {schema}')
         conn = self.engine.connect()
         conn.execute(query)
+        print(f'Schema {schema} created successfully')
         conn.close()
 
 
 class PostgresDataInteractor(WarehouseDataInteractor):
 
-    def __init__(self,
-                 user: str = Credentials().POSTGRES_USER,
-                 password: str = urllib.parse.quote_plus(
-                     Credentials().POSTGRES_PASSWORD)
-                 if Credentials().POSTGRES_PASSWORD else None,
-                 host: str = Credentials().POSTGRES_HOST,
-                 port: str = Credentials().POSTGRES_PORT,
-                 database: str = Credentials().POSTGRES_DATABASE):
+    def __init__(
+        self,
+        user: str = Credentials().get_credential('POSTGRES_USER'),
+        password: str = urllib.parse.quote_plus(
+            Credentials().get_credential('POSTGRES_PASSWORD'))
+        if Credentials().get_credential('POSTGRES_PASSWORD') else '',
+        host: str = Credentials().get_credential('POSTGRES_HOST'),
+        port: str = Credentials().get_credential('POSTGRES_PORT'),
+        database: str = Credentials().get_credential('POSTGRES_DATABASE')):
         super().__init__(user, password, host, port, database)
         try:
             self.engine = sqlalchemy.create_engine(
