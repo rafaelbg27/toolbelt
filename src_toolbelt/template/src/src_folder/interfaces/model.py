@@ -1,5 +1,5 @@
 import joblib
-from $PROJECT_NAME$ import get_model_path
+from $PROJECT_NAME$ import get_models_path
 from abc import ABC, abstractmethod
 
 
@@ -22,8 +22,8 @@ class Model(ABC):
 
     def save(self):
         joblib.dump(
-            self, get_model_path('{}.joblib'.format(self.__class__.__name__)))
+            self, get_models_path('{}.joblib'.format(self.__class__.__name__)))
 
     def load(self):
         return joblib.load(
-            get_model_path('{}.joblib'.format(self.__class__.__name__)))
+            get_models_path('{}.joblib'.format(self.__class__.__name__)))

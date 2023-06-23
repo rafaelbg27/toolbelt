@@ -65,8 +65,8 @@ def init_project():
         for file in files:
             edit_metadata(os.path.join(root, file), translate_dict)
 
-    print("Project installed ✅")
-    print("To start making science:")
+    print("Project installed successfully!")
+    print("To install the project, run:")
     print(f"    cd {name}")
-    print(f"    pip3 install -e .")
-    print("Fill the README.md to make everyone happy, good coding!")
+    print(f"    pip install -e .")
+    print("Fill the README.md, good coding!")

@@ -2,6 +2,13 @@ import pandas as pd
 from $PROJECT_NAME$.interfaces.transformer import Transformer
 from $PROJECT_NAME$.utils.helper_functions import check_integrity
 
+import logging
+import sys
+
+import numpy as np
+import pandas as pd
+from unidecode import unidecode
+
 
 class Dropper(Transformer):
 
@@ -190,8 +197,24 @@ class FeatureTransformer(Transformer):
 
 class CustomTransformer(Transformer):
 
-    def transform(self, X):
+    def __init__(self, custom_transformer_name: str = None):
+        check_integrity(custom_transformer_name, str)
+        self.custom_transformer_name = custom_transformer_name
+
+    def _transform_example(self, X: pd.DataFrame):
+
         X = X.copy()
+
+        return X
+
+    def transform(self, X: pd.DataFrame):
+
+        if hasattr(self, '_transform_{}'.format(self.custom_transformer_name)):
+
+            transformation = getattr(
+                self, '_transform_{}'.format(self.custom_transformer_name))
+
+            X = transformation(X=X)
 
         return X
 

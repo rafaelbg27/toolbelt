@@ -1,155 +1,16 @@
-from typing import Literal
+import urllib
+from zipfile import ZipFile
 
 import pandas as pd
 import pandas.io.sql as sqlio
-import psycopg2
 import sqlalchemy
 import yaml
+
 from $PROJECT_NAME$ import get_data_path, get_queries_path
 from $PROJECT_NAME$.interfaces.config import Credentials
+
 from googleapiclient.discovery import build
 from oauth2client.service_account import ServiceAccountCredentials
-from typing import Literal
-from zipfile import ZipFile
-
-
-class WarehouseDataInteractor:
-    """
-    A class used to stablish a connection, via Sagemaker endpoint, with Alice's PostgreSQL or Redshift data warehouse.
-
-    Methods
-    -------
-    run_sql_query(sql_path: str) -> pd.DataFrame
-        Run a sql query file on the data warehouse.
-    run_str_query(query: str) -> pd.DataFrame
-        Execute a query text on the data warehouse.
-    delete_table(table_name: str)
-        Delete a table from the data warehouse.
-    insert_table(table_name: str, data: pd.DataFrame, delete: bool = True)
-        Insert a table into the data warehouse.
-
-    Attributes
-    ----------
-    dw: str
-        The data warehouse to connect to. Only PostgreSQL or Redshift is supported.
-    port: str
-        The port to connect to the data warehouse.
-    region: str
-        The region where the data warehouse is located.
-    dbname: str
-        The name of the database to connect to.
-    """
-
-    def __init__(self,
-                 user: str = None,
-                 dw: str = 'postgres',
-                 port: str = 'default',
-                 region: str = 'us-east-1',
-                 dbname: str = 'main'):
-
-        assert dw == 'postgres' or dw == 'redshift', 'Only PostgreSQL or Redshift is supported'
-        self.user = user
-        self.region = region
-        self.dbname = dbname
-        if dw == 'postgres':
-            self.user = Credentials().POSTGRES_USER
-            self.endpoint = Credentials().POSTGRES_ENDPOINT
-            self.token = Credentials().POSTGRES_TOKEN
-            if port == 'default':
-                self.port = '5432'
-        if dw == 'redshift':
-            self.user = Credentials().REDSHIFT_USER
-            self.endpoint = Credentials().REDSHIFT_ENDPOINT
-            self.token = Credentials().REDSHIFT_TOKEN
-            if port == 'default':
-                self.port = '5439'
-
-    def run_sql_query(self, sql_path: str) -> pd.DataFrame:
-        """"
-        Run a sql query file on the data warehouse.
-        """
-        query = open(get_queries_path(sql_path), 'r').read()
-        conn = psycopg2.connect(host=self.endpoint,
-                                port=self.port,
-                                database=self.dbname,
-                                user=self.user,
-                                password=self.token)
-        data = sqlio.read_sql_query(query, conn)
-        conn.close()
-        return data
-
-    def run_str_query(self, query: str) -> pd.DataFrame:
-        """
-        Execute a query text on the data warehouse.
-        """
-        conn = psycopg2.connect(host=self.endpoint,
-                                port=self.port,
-                                database=self.dbname,
-                                user=self.user,
-                                password=self.token)
-        data = sqlio.read_sql_query(query, conn)
-        conn.close()
-        return data
-
-    def _sql_execute(self, query: str):
-        conn = psycopg2.connect(host=self.endpoint,
-                                port=self.port,
-                                database=self.dbname,
-                                user=self.user,
-                                password=self.token)
-        cur = conn.cursor()
-        cur.execute(query)
-        conn.commit()
-        conn.close()
-
-    # def delete_table(self, table_name: str):
-    #     """
-    #     Delete a table from the data warehouse.
-    #     """
-    #     query = f"DROP TABLE IF EXISTS {table_name}"
-    #     self._sql_execute(query)
-
-    def insert_table(self,
-                     dataset: pd.DataFrame,
-                     table_name: str,
-                     schema: str = 'restricted_datascience',
-                     if_exists: Literal['fail', 'replace',
-                                        'append'] = 'replace',
-                     index: bool = False,
-                     index_label: str = None,
-                     chunksize: int = None,
-                     dtype: dict = None):
-        """
-        Insert a table into the data warehouse.
-        """
-        url_conn = f"redshift://{self.user}:{self.token}@{self.endpoint}:{self.port}/{self.dbname}"
-        engine = sqlalchemy.create_engine(url_conn,
-                                          connect_args={'sslmode': 'prefer'})
-        dataset.to_sql(table_name,
-                       engine,
-                       schema=schema,
-                       if_exists=if_exists,
-                       index=index,
-                       index_label=index_label,
-                       chunksize=chunksize,
-                       dtype=dtype,
-                       method='multi')
-
-        print(
-            f"Table {table_name} inserted successfully, with {len(dataset)} rows."
-        )
-
-
-class RSWarehouseDataInteractor(WarehouseDataInteractor):
-
-    def __init__(self):
-        super().__init__(Credentials().REDSHIFT_USER, 'redshift')
-
-
-class PGWarehouseDataInteractor(WarehouseDataInteractor):
-
-    def __init__(self):
-        super().__init__(Credentials().POSTGRES_USER, 'postgres')
 
 
 class StaticDataInteractor:
@@ -163,12 +24,16 @@ class StaticDataInteractor:
             return self.cache_dict[cache_id]
         else:
             print("Loading fresh... File {}".format(path))
-            df = pd.read_csv(get_data_path(path), **specs)
+            if path.endswith('.csv'):
+                df = pd.read_csv(get_data_path(path), **specs)
+            elif path.endswith('.xlsx'):
+                df = pd.read_excel(get_data_path(path), **specs)
             self.cache_dict[cache_id] = df
             return df
 
-    def write(self, df, path):
-        df.to_csv(get_data_path(path), index=False, encoding='utf-8')
+    def write(self, df, path, sep=','):
+        df.to_csv(get_data_path(path), index=False, encoding='utf-8', sep=sep)
+        print("File {} written successfully".format(path))
 
 
 class ZipDataInteractor:
@@ -197,8 +62,7 @@ class GoogleSheetsDataInteractor:
     def load(self, sheet_id, sheet_range, sheet_name=None):
         if self.credentials is None:
             raise Exception(
-                "Google credentials not found. Please check your credentials."
-            )
+                "Google credentials not found. Please check your credentials.")
         sheet_range = '{}!{}'.format(
             sheet_name, sheet_range) if sheet_name else sheet_range
         service = build('sheets', 'v4', credentials=self.credentials)
@@ -210,52 +74,6 @@ class GoogleSheetsDataInteractor:
         df_results = pd.DataFrame(values[1:], columns=values[0])
 
         return df_results
-
-
-class BucketDataInteractor:
-
-    def __init__(self):
-        self.cache_dict = {}
-        self.AWS_ACCESS_KEY_ID = Credentials().AWS_ACCESS_KEY_ID
-        self.AWS_SECRET_ACCESS_KEY = Credentials().AWS_SECRET_ACCESS_KEY
-        self.AWS_SESSION_TOKEN = Credentials().AWS_SESSION_TOKEN
-        self.AWS_BUCKET_NAME = Credentials().AWS_BUCKET_NAME
-
-    def load(self, path, specs={}, refresh=False):
-        cache_id = path + str(specs)
-        if cache_id in self.cache_dict.keys() and not refresh:
-            return self.cache_dict[cache_id]
-        else:
-            print("Loading fresh... File {}".format(path))
-            if path.endswith('.csv'):
-                df = pd.read_csv(f"s3://{self.AWS_S3_BUCKET}/{path}",
-                                 **specs,
-                                 storage_options={
-                                     'key': self.AWS_ACCESS_KEY_ID,
-                                     'secret': self.AWS_SECRET_ACCESS_KEY,
-                                     'token': self.AWS_SESSION_TOKEN,
-                                 })
-            elif path.endswith('.json'):
-                df = pd.read_json(f"s3://{self.AWS_S3_BUCKET}/{path}",
-                                  **specs,
-                                  orient="index",
-                                  storage_options={
-                                      'key': self.AWS_ACCESS_KEY_ID,
-                                      'secret': self.AWS_SECRET_ACCESS_KEY,
-                                      'token': self.AWS_SESSION_TOKEN,
-                                  }).to_dict()[0]
-            self.cache_dict[cache_id] = df
-            return df
-
-    def write(self, df, path):
-        df.to_csv(f"s3://{self.AWS_S3_BUCKET}/{path}",
-                  index=False,
-                  encoding='utf-8',
-                  storage_options={
-                      'key': self.AWS_ACCESS_KEY_ID,
-                      'secret': self.AWS_SECRET_ACCESS_KEY,
-                      'token': self.AWS_SESSION_TOKEN,
-                  })
 
 
 class ConfigDataInteractor:
@@ -274,13 +92,103 @@ class ConfigDataInteractor:
             yaml.dump(data, f)
 
 
+class WarehouseDataInteractor:
+
+    def __init__(self, user: str, password: str, host: str, port: str,
+                 database: str):
+
+        self.user = user
+        self.password = password
+        self.host = host
+        self.port = port
+        self.database = database
+
+    def run_sql_query(self, query_name, query_params={}):
+        """
+        Run a query from a file and return a pandas dataframe
+        """
+        with open(get_queries_path(query_name), 'r') as f:
+            query = f.read()
+        query = query.format(**query_params)
+        conn = self.engine.connect()
+        df = sqlio.read_sql_query(query, conn)
+        conn.close()
+        return df
+
+    def run_str_query(self, query):
+        """
+        Run a query from a string and return a pandas dataframe
+        """
+        conn = self.engine.connect()
+        df = sqlio.read_sql_query(query, conn)
+        conn.close()
+        return df
+
+    def insert_table(self,
+                     df: pd.DataFrame,
+                     table_name: str,
+                     schema: str,
+                     if_exists: str = 'append',
+                     index: bool = False,
+                     method: str = 'multi'):
+        """
+        Insert a pandas dataframe into a table
+        """
+        conn = self.engine.connect()
+        df.to_sql(table_name,
+                  conn,
+                  schema=schema,
+                  if_exists=if_exists,
+                  index=index,
+                  method=method)
+        conn.close()
+
+    def delete_table(self, table_name: str, schema: str):
+        """
+        Delete a table
+        """
+        query = f'DROP TABLE IF EXISTS {schema}.{table_name}'
+        conn = self.engine.connect()
+        conn.execute(query)
+        conn.close()
+
+    def create_schema(self, schema: str):
+        """
+        Create a schema
+        """
+        query = sqlalchemy.text(f'CREATE SCHEMA IF NOT EXISTS {schema}')
+        conn = self.engine.connect()
+        conn.execute(query)
+        conn.close()
+
+
+class PostgresDataInteractor(WarehouseDataInteractor):
+
+    def __init__(self,
+                 user: str = Credentials().POSTGRES_USER,
+                 password: str = urllib.parse.quote_plus(
+                     Credentials().POSTGRES_PASSWORD)
+                 if Credentials().POSTGRES_PASSWORD else None,
+                 host: str = Credentials().POSTGRES_HOST,
+                 port: str = Credentials().POSTGRES_PORT,
+                 database: str = Credentials().POSTGRES_DATABASE):
+        super().__init__(user, password, host, port, database)
+        try:
+            self.engine = sqlalchemy.create_engine(
+                f'postgresql://{user}:{password}@{host}:{port}/{database}?sslmode=prefer'
+            )
+        except:
+            print(
+                "Could not connect to the database. Invalid Postgres credentials."
+            )
+            self.engine = None
+
+
 class DataInteractor:
 
     def __init__(self):
         self.static = StaticDataInteractor()
         self.zip = ZipDataInteractor()
         self.sheets = GoogleSheetsDataInteractor()
-        self.postgres = PGWarehouseDataInteractor()
-        self.redshift = RSWarehouseDataInteractor()
-        self.bucket = BucketDataInteractor()
         self.config = ConfigDataInteractor()
+        self.postgres = PostgresDataInteractor()

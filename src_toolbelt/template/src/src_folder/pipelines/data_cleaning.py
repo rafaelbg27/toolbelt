@@ -12,13 +12,17 @@ class DataCleaning(PipelineStep):
 
     def __init__(
             self,
-            input_path="interim/file_name.csv",
+            input_path="interim/cuidarme_medical_loss.csv",
             input_specs={
                 'low_memory': False,
-                'encoding': 'utf-8'
+                'encoding': 'utf-8',
+                'dtype': {
+                    'carteirinha': str,
+                    'cps_num_aj': str
+                }
             },
-            output_path='interim/file_name_clean.csv',
-            params_path="params/cleaning.yaml"):
+            output_path='interim/cuidarme_medical_loss_clean.csv',
+            params_path="params/cuidarme_medical_loss/cleaning.yaml"):
         super().__init__(input_path=input_path,
                          input_specs=input_specs,
                          output_path=output_path)
@@ -29,7 +33,9 @@ class DataCleaning(PipelineStep):
             duplicate_columns=self.params['duplicate_columns'])
         self.filter = Filter(
             filter_notnull_columns=self.params['filter_notnull_columns'],
-            filter_other_columns=self.params['filter_other_columns'])
+            filter_other_meta=self.params['filter_other_meta'],
+            filter_custom_query_columns=self.
+            params['filter_custom_query_columns'])
 
     def transform(self) -> None:
         if hasattr(self, 'data'):

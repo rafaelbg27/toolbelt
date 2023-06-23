@@ -11,7 +11,6 @@ from $PROJECT_NAME$.transformers.preprocessors import (Binarizer, Binner,
                                                        MinimumPercentageFilter,
                                                        MissingInputer, Renamer)
 
-
 class DataPreprocessing(PipelineStep):
 
     def __init__(
@@ -43,7 +42,8 @@ class DataPreprocessing(PipelineStep):
         self.encoder = Encoder(encoder_meta=self.params['encoder_meta'])
         self.feature_transformer = FeatureTransformer(
             transformer_meta=self.params['transformer_meta'])
-        self.custom_transformer = CustomTransformer()
+        self.custom_transformer = CustomTransformer(
+            custom_transformer_name=self.params['custom_transformer_name'])
         self.missing_inputer = MissingInputer(
             default_numerical_missing_columns=self.
             params['default_numerical_missing_columns'],

@@ -6,7 +6,7 @@ import logging
 
 import pandas as pd
 
-# from $PROJECT_NAME$.interfaces.pipeline_step import PipelineStep
+from $PROJECT_NAME$.interfaces.pipeline_step import PipelineStep
 
 
 class DataExtracting(PipelineStep):
