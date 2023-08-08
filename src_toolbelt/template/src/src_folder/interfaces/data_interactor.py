@@ -47,7 +47,11 @@ class ZipDataInteractor:
 
 class GoogleSheetsDataInteractor:
 
-    def __init__(self, GOOGLE_CERTIFICATE=Credentials().GOOGLE_CERTIFICATE):
+    def __init__(self,
+                 GOOGLE_CERTIFICATE=Credentials().get_credential(
+                     credential_name='google_sheets',
+                     credential_type='file',
+                     credential_extension='json')):
         """
         Create the object with a sheet_id and the path to the json file containing the key
         """
