@@ -1,8 +1,8 @@
-# Toolbelt DS
-Toolbelt is a project for creating data science projects in Alice's standards.
+# Data Science Toolbelt
+Toolbelt is a project for creating data science projects standart folders.
 
 ## How to install
-`pip3 install -e .`
+`pip install -e .`
 
 ## Commands
 `init_project`: Initilizes default repo
