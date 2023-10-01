@@ -5,33 +5,37 @@ import pandas as pd
 import pandas.io.sql as sqlio
 import sqlalchemy
 import yaml
-
-from $PROJECT_NAME$ import get_data_path, get_queries_path
-from $PROJECT_NAME$.interfaces.config import Credentials
-
 from googleapiclient.discovery import build
 from oauth2client.service_account import ServiceAccountCredentials
 
+# from $PROJECT_NAME$ import get_data_path, get_queries_path, get_kmp_onedrive_data_path
+# from $PROJECT_NAME$.interfaces.config import Credentials
+
+
 class StaticDataInteractor:
 
-    def __init__(self):
+    def __init__(self, base_path=get_data_path('')):
         self.cache_dict = {}
+        self.base_path = base_path
 
     def load(self, path, specs={}, refresh=False):
         cache_id = path + str(specs)
         if cache_id in self.cache_dict.keys() and not refresh:
             return self.cache_dict[cache_id]
         else:
-            print("Loading fresh... File {}".format(path))
             if path.endswith('.csv'):
-                df = pd.read_csv(get_data_path(path), **specs)
+                df = pd.read_csv(os.path.join(self.base_path, path), **specs)
             elif path.endswith('.xlsx'):
-                df = pd.read_excel(get_data_path(path), **specs)
+                df = pd.read_excel(os.path.join(self.base_path, path), **specs)
             self.cache_dict[cache_id] = df
+            print("File {} loaded successfully".format(path))
             return df
 
     def write(self, df, path, sep=','):
-        df.to_csv(get_data_path(path), index=False, encoding='utf-8', sep=sep)
+        df.to_csv(os.path.join(self.base_path, path),
+                  index=False,
+                  encoding='utf-8',
+                  sep=sep)
         print("File {} written successfully".format(path))
 
 
@@ -66,8 +70,8 @@ class GoogleSheetsDataInteractor:
         if self.credentials is None:
             raise Exception(
                 "Google credentials not found. Please check your credentials.")
-        sheet_range = '{}!{}'.format(sheet_name,
-                                     sheet_range) if sheet_name else sheet_range
+        sheet_range = '{}!{}'.format(
+            sheet_name, sheet_range) if sheet_name else sheet_range
         service = build('sheets', 'v4', credentials=self.credentials)
         sheet = service.spreadsheets()
         result = sheet.values().get(spreadsheetId=sheet_id,
@@ -192,6 +196,12 @@ class PostgresDataInteractor(WarehouseDataInteractor):
             self.engine = None
 
 
+class KMPOneDriveDataInteractor(StaticDataInteractor):
+
+    def __init__(self):
+        super().__init__(base_path=get_kmp_onedrive_data_path(''))
+
+
 class DataInteractor:
 
     def __init__(self):
@@ -200,3 +210,4 @@ class DataInteractor:
         self.sheets = GoogleSheetsDataInteractor()
         self.config = ConfigDataInteractor()
         self.postgres = PostgresDataInteractor()
+        self.kmp_onedrive = KMPOneDriveDataInteractor()
