@@ -8,8 +8,8 @@ import yaml
 from googleapiclient.discovery import build
 from oauth2client.service_account import ServiceAccountCredentials
 
-# from $PROJECT_NAME$ import get_data_path, get_queries_path, get_kmp_onedrive_data_path
-# from $PROJECT_NAME$.interfaces.config import Credentials
+from $PROJECT_NAME$ import get_data_path, get_queries_path, get_kmp_onedrive_data_path
+from $PROJECT_NAME$.interfaces.config import Credentials
 
 
 class StaticDataInteractor:
