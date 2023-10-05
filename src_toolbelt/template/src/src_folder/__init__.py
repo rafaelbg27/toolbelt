@@ -40,6 +40,7 @@ def get_kmp_onedrive_path(path):
                 if dirname.lower() == folder_name:
                     print('Found: {}'.format(os.path.join(dirpath, dirname)))
                     return os.path.join(_ROOT, dirpath, dirname)
+        print("Could not initialize root path for KMP OneDrive folder.")
         return None
 
     return os.path.join(_find_root_kmp_onedrive_path(),

@@ -18,7 +18,7 @@ class Cleaner(Transformer):
     def transform(self, X):
         X = X.copy()[self.variable_columns]
         X = X.replace(r'^\s*$', np.nan, regex=True)
-        X = X.applymap(lambda x: x.strip() if isinstance(x, str) else x)
+        X = X.map(lambda x: x.strip() if isinstance(x, str) else x)
         # drop duplicates if not empty list
         if self.duplicate_columns:
             X = X.drop_duplicates(subset=self.duplicate_columns)

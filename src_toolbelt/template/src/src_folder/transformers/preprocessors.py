@@ -1,13 +1,15 @@
-import pandas as pd
-from $PROJECT_NAME$.interfaces.transformer import Transformer
-from $PROJECT_NAME$.utils.helper_functions import check_integrity
-
+import datetime
 import logging
 import sys
 
 import numpy as np
 import pandas as pd
+from databases.interfaces.transformer import Transformer
+from databases.utils.helper_functions import check_integrity
 from unidecode import unidecode
+
+from $PROJECT_NAME$.interfaces.transformer import Transformer
+from $PROJECT_NAME$.utils.helper_functions import check_integrity
 
 
 class Dropper(Transformer):
@@ -73,10 +75,9 @@ class MinimumPercentageFilter(Transformer):
         X = X.copy()
         if len(self.minimum_percentage_meta) > 0:
             for col in self.minimum_percentage_meta.keys():
-                aux = (X[col].value_counts().index)[(
-                    X[col].value_counts() >
-                    (self.minimum_percentage_meta[col] *
-                     pd.notnull(X[col]).sum()))]
+                aux = (X[col].value_counts().index)[(X[col].value_counts() > (
+                    self.minimum_percentage_meta[col] *
+                    pd.notnull(X[col]).sum()))]
                 X[col] = X[col].apply(lambda x: x if x in aux else 'other')
         return X
 
@@ -178,9 +179,49 @@ class FeatureTransformer(Transformer):
 
     def _fix_texts(self, X: pd.DataFrame, feature_name: str, columns: list):
         X = X.copy()
+        if len(columns) == 1:
+            X[feature_name] = X[columns[0]].apply(lambda x: '_'.join(
+                unidecode(x.lower().strip().replace('%', 'pct').replace(
+                    '-', '').replace('/', '').replace('.', '')).split())
+                                                  if pd.notnull(x) else x)
+            return X
+
+        for column in columns:
+            X[column] = X[column].apply(lambda x: '_'.join(
+                unidecode(x.lower().strip().replace('%', 'pct').replace(
+                    '-', '').replace('/', '').replace('.', '')).split())
+                                        if pd.notnull(x) else x)
+        return X
+
+    def _datediff(self, X: pd.DataFrame, feature_name: str, columns: list):
+        X = X.copy()
+        X[feature_name] = np.round(
+            (X[columns[0]] - X[columns[1]]).dt.days / 365.25, 1)
+        return X
+
+    def _calculate_age(self,
+                       X: pd.DataFrame,
+                       feature_name: str,
+                       columns: list,
+                       n_digits: int = 1):
+        X = X.copy()
+        X[feature_name] = np.round(
+            (datetime.datetime.now() - X[columns[0]]).dt.days / 365.25,
+            n_digits)
+        return X
+
+    def _date_to_month(self, X: pd.DataFrame, feature_name: str,
+                       columns: list):
+        X = X.copy()
+        X[feature_name] = pd.to_datetime(X[columns[0]], errors='coerce').apply(
+            lambda x: x.replace(day=1) if pd.notnull(x) else x)
+        return X
+
+    def _fix_zipcodes(self, X: pd.DataFrame, feature_name: str, columns: list):
+        X = X.copy()
         for column in columns:
             X[column] = X[column].apply(
-                lambda x: '_'.join(unidecode(str(x).lower()).split(' ')))
+                lambda x: x.replace(' ', '').replace('-', ''))
         return X
 
     def transform(self, X):

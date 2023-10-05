@@ -2,9 +2,12 @@
 Load data and generate CSV files.
 """
 
+import datetime
 import logging
 
 import pandas as pd
+from databases.interfaces.pipeline_step import PipelineStep
+from unidecode import unidecode
 
 from $PROJECT_NAME$.interfaces.pipeline_step import PipelineStep
 
@@ -37,21 +40,26 @@ class DataExtracting(PipelineStep):
                     path=meta['input_path'], specs=meta['specs'])
         self.datasets = datasets
 
-    def _transform_something(self, X: pd.DataFrame) -> pd.DataFrame:
-        return None
+    def _transform(self, X: pd.DataFrame, db_table: str) -> pd.DataFrame:
+
+        print('Transforming {}...'.format(db_table))
+
+        X_new = X.copy()
+        X_new.columns = pd.Series(X_new.columns).apply(lambda x: '_'.join(
+            unidecode(x.lower().strip().replace('%', 'pct').replace('-', '').
+                      replace('/', '')).split()))
+
+        if db_table == 'table_name':
+            pass
+
+        print('Transformation not found for {}!'.format(db_table))
+        return X_new
 
     def transform(self) -> None:
         if hasattr(self, 'datasets'):
             for var, meta in self.files.items():
-                if '_transform_{}'.format(var) in dir(self):
-                    print('Transforming... {}'.format(var))
-                    transformation = getattr(self, '_transform_{}'.format(var))
-                    self.datasets[meta['output_path']] = transformation(
-                        self.datasets[meta['input_path']])
-                else:
-                    self.datasets[meta['output_path']] = self.datasets[
-                        meta['input_path']]
-
+                self.datasets[meta['output_path']] = self._transform(
+                    self.datasets[meta['input_path']], var)
         else:
             logging.error("Data not found! Load it first.")
 
