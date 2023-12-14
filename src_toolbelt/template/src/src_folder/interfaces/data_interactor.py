@@ -12,6 +12,10 @@ from oauth2client.service_account import ServiceAccountCredentials
 from $PROJECT_NAME$ import get_data_path, get_queries_path, get_kmp_onedrive_data_path
 from $PROJECT_NAME$.interfaces.config import Credentials
 
+# import logging
+# logging.basicConfig()
+# logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
+
 
 class StaticDataInteractor:
 
@@ -32,11 +36,11 @@ class StaticDataInteractor:
             print("File {} loaded successfully".format(path))
             return df
 
-    def write(self, df, path, sep=','):
-        df.to_csv(os.path.join(self.base_path, path),
-                  index=False,
-                  encoding='utf-8',
-                  sep=sep)
+    def write(self, df, path, specs={'index': False, 'encoding': 'utf-8'}):
+        if path.endswith('.csv'):
+            df.to_csv(os.path.join(self.base_path, path), **specs)
+        elif path.endswith('.xlsx'):
+            df.to_excel(os.path.join(self.base_path, path), **specs)
         print("File {} written successfully".format(path))
 
 
@@ -129,6 +133,7 @@ class WarehouseDataInteractor:
         Run a query from a string and return a pandas dataframe
         """
         conn = self.engine.connect()
+        query = sqlalchemy.text(query)
         df = sqlio.read_sql_query(query, conn)
         conn.close()
         return df
@@ -137,7 +142,7 @@ class WarehouseDataInteractor:
                      df: pd.DataFrame,
                      table_name: str,
                      schema: str,
-                     if_exists: str = 'append',
+                     if_exists: str = 'replace',
                      index: bool = False,
                      method: str = 'multi'):
         """
@@ -157,9 +162,16 @@ class WarehouseDataInteractor:
         """
         Delete a table
         """
-        query = f'DROP TABLE IF EXISTS {schema}.{table_name}'
+        query = sqlalchemy.text(f'DROP TABLE IF EXISTS {schema}.{table_name}')
         conn = self.engine.connect()
         conn.execute(query)
+
+        try:
+            conn.commit()
+        except Exception as e:
+            conn.rollback()
+            print(str(e))
+
         print(f'Table {table_name} deleted successfully on schema {schema}')
         conn.close()
 
@@ -170,7 +182,31 @@ class WarehouseDataInteractor:
         query = sqlalchemy.text(f'CREATE SCHEMA IF NOT EXISTS {schema}')
         conn = self.engine.connect()
         conn.execute(query)
+
+        try:
+            conn.commit()
+        except Exception as e:
+            conn.rollback()
+            print(str(e))
+
         print(f'Schema {schema} created successfully')
+        conn.close()
+
+    def delete_schema(self, schema: str):
+        """
+        Delete a schema
+        """
+        query = sqlalchemy.text(f'DROP SCHEMA IF EXISTS {schema} CASCADE')
+        conn = self.engine.connect()
+        conn.execute(query)
+
+        try:
+            conn.commit()
+        except Exception as e:
+            conn.rollback()
+            print(str(e))
+
+        print(f'Schema {schema} deleted successfully')
         conn.close()
 
 
@@ -201,6 +237,16 @@ class KMPOneDriveDataInteractor(StaticDataInteractor):
 
     def __init__(self):
         super().__init__(base_path=get_kmp_onedrive_data_path(''))
+
+    # Create a method to download a file from OneDrive (load and then write)
+    def download(self,
+                 load_path,
+                 write_path,
+                 load_specs={},
+                 write_specs={},
+                 refresh=False):
+        df = self.load(path=load_path, specs=load_specs, refresh=refresh)
+        self.write(df=df, path=get_data_path(write_path), specs=write_specs)
 
 
 class DataInteractor:
