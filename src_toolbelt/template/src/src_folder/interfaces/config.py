@@ -3,7 +3,7 @@ import os
 from typing import Literal
 
 from dotenv import load_dotenv
-from databases import get_lib_path
+from $PROJECT_NAME$ import get_lib_path
 
 load_dotenv(get_lib_path('.env'))
 
