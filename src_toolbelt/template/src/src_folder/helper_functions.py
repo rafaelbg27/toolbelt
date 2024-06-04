@@ -8,6 +8,7 @@ def check_integrity(key, var_type):
         return [name for name in namespace if namespace[name] is obj]
 
     if not isinstance(key, var_type):
-        logging.error('The config file is corrupted in {} key!'.format(
-            _namestr, globals()))
+        logging.error(
+            "The config file is corrupted in {} key!".format(_namestr, globals())
+        )
         sys.exit(1)

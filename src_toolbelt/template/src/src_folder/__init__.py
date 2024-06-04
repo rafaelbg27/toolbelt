@@ -1,7 +1,5 @@
 import os
 
-import seaborn as sns
-
 _ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 
 
@@ -27,7 +25,3 @@ def get_docs_path(path):
 
 def get_reports_path(path):
     return os.path.join(_ROOT, "reports", path)
-
-
-def get_color_palette(size: int, name: str = "husl"):
-    return sns.color_palette(name, size).as_hex().tolist()

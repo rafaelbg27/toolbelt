@@ -15,7 +15,7 @@ def copytree(src, dst, symlinks=False, ignore=None):
 
 def edit_metadata(file_name, translate_dict):
     try:
-        if not file_name.startswith('.'):
+        if not file_name.startswith("."):
             with open(file_name, "r") as f:
                 content = f.read()
             for key, value in translate_dict.items():

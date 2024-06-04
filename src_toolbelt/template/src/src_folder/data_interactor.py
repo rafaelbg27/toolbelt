@@ -1,20 +1,34 @@
+import logging
 import os
 import urllib
-from zipfile import ZipFile
 
 import pandas as pd
 import pandas.io.sql as sqlio
+import pandas_gbq
 import sqlalchemy
 import yaml
+from google.cloud import bigquery
+from google.oauth2 import service_account
 from googleapiclient.discovery import build
-from oauth2client.service_account import ServiceAccountCredentials
 
-from $PROJECT_NAME$ import get_data_path, get_queries_path
-from $PROJECT_NAME$.interfaces.config import Credentials
+# from $PROJECT_NAME$ import get_data_path, get_queries_path
+# from $PROJECT_NAME$.config import Credentials
 
-# import logging
-# logging.basicConfig()
-# logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
+
+class ConfigDataInteractor:
+
+    def __init__(self):
+        self.params = {}
+
+    def load(self, name, path):
+        with open(get_data_path(path), "r") as f:
+            params = yaml.load(f, Loader=yaml.FullLoader)
+            self.params[name] = params
+        return params
+
+    def write(self, data, path):
+        with open(get_data_path(path), "w") as f:
+            yaml.dump(data, f)
 
 
 class StaticDataInteractor:
@@ -44,41 +58,45 @@ class StaticDataInteractor:
         print("File {} written successfully".format(path))
 
 
-class ZipDataInteractor:
-
-    def __init__(self): ...
-
-    def extract(self, zip_path: str, extract_path: str):
-        with ZipFile(get_data_path(zip_path), "r") as zip_obj:
-            zip_obj.extractall(get_data_path(extract_path))
-
-
-class GoogleSheetsDataInteractor:
+class GoogleDataInteractor:
 
     def __init__(
         self,
-        GOOGLE_CERTIFICATE=Credentials().get_credential(
-            credential_name="google_sheets",
-            credential_type="file",
-            credential_extension="json",
-        ),
+        credential_name: str,
+        credential_type: str,
+        credential_extension: str,
+        scopes: list,
     ):
         """
-        Create the object with a sheet_id and the path to the json file containing the key
+        Interface to interact with Google APIs
         """
-        scopes = ["https://www.googleapis.com/auth/spreadsheets"]
-        if GOOGLE_CERTIFICATE is not None:
-            self.credentials = ServiceAccountCredentials.from_json_keyfile_dict(
-                GOOGLE_CERTIFICATE, scopes
-            )
-        else:
-            self.credentials = None
 
-    def load(self, sheet_id, sheet_range, sheet_name=None):
+        self.credentials = service_account.Credentials.from_service_account_file(
+            Credentials().get_credential(
+                credential_name=credential_name,
+                credential_type=credential_type,
+                credential_extension=credential_extension,
+            ),
+            scopes=scopes,
+        )
+
+
+class GoogleSheetsDataInteractor(GoogleDataInteractor):
+
+    def __init__(
+        self,
+        credential_name: str = "google_sheets",
+        credential_type: str = "file",
+        credential_extension: str = "json",
+        scopes: list = ["https://www.googleapis.com/auth/spreadsheets"],
+    ):
+        super().__init__(credential_name, credential_type, credential_extension, scopes)
         if self.credentials is None:
             raise Exception(
                 "Google credentials not found. Please check your credentials."
             )
+
+    def load(self, sheet_id, sheet_range, sheet_name=None) -> pd.DataFrame:
         sheet_range = (
             "{}!{}".format(sheet_name, sheet_range) if sheet_name else sheet_range
         )
@@ -91,26 +109,99 @@ class GoogleSheetsDataInteractor:
 
         return df_results
 
+    def write(self, sheet_id, sheet_range, values, sheet_name=None) -> None:
+        sheet_range = (
+            "{}!{}".format(sheet_name, sheet_range) if sheet_name else sheet_range
+        )
+        service = build("sheets", "v4", credentials=self.credentials)
+        body = {"values": values}
+        result = (
+            service.spreadsheets()
+            .values()
+            .update(
+                spreadsheetId=sheet_id,
+                range=sheet_range,
+                valueInputOption="RAW",
+                body=body,
+            )
+            .execute()
+        )
+        print("{0} cells updated.".format(result.get("updatedCells")))
 
-class ConfigDataInteractor:
 
-    def __init__(self):
-        self.params = {}
+class BigQueryDataInteractor(GoogleDataInteractor):
 
-    def load(self, name, path):
-        with open(get_data_path(path), "r") as f:
-            params = yaml.load(f, Loader=yaml.FullLoader)
-            self.params[name] = params
-        return params
+    def __init__(
+        self,
+        credential_name: str = "bigquery-data-science-295215",
+        credential_type: str = "file_path",
+        credential_extension: str = "json",
+        scopes: list = [
+            "https://www.googleapis.com/auth/cloud-platform",
+            "https://www.googleapis.com/auth/drive",
+            "https://www.googleapis.com/auth/bigquery",
+        ],
+    ):
+        super().__init__(credential_name, credential_type, credential_extension, scopes)
+        if self.credentials is None:
+            raise Exception(
+                "Google credentials not found. Please check your credentials."
+            )
+        self.client = bigquery.Client(credentials=self.credentials)
+        pandas_gbq.context.credentials = self.credentials
 
-    def write(self, data, path):
-        with open(get_data_path(path), "w") as f:
-            yaml.dump(data, f)
+    def run_sql_query(self, query_name: str, query_params: dict = {}) -> pd.DataFrame:
+        """
+        Run a query from a file and return a pandas dataframe
+        """
+        with open(get_queries_path(query_name), "r") as f:
+            query = f.read()
+        query = query.format(**query_params)
+        query_job = self.client.query(query)
+        df = query_job.to_dataframe()
+        return df
+
+    def run_str_query(self, query: str) -> pd.DataFrame:
+        """
+        Run a query from a string and return a pandas dataframe
+        """
+        query_job = self.client.query(query)
+        df = query_job.to_dataframe()
+        return df
+
+    def insert_table(
+        self,
+        df: pd.DataFrame,
+        table_name: str,
+        dataset_id: str,
+        project_id: str,
+        table_schema: dict = None,
+        if_exists: str = "replace",
+    ):
+        """
+        Insert a pandas dataframe into a table
+        """
+        table_id = f"{dataset_id}.{table_name}"
+        pandas_gbq.to_gbq(
+            df,
+            table_id,
+            project_id=project_id,
+            table_schema=table_schema,
+            if_exists=if_exists,
+        )
 
 
 class WarehouseDataInteractor:
 
-    def __init__(self, user: str, password: str, host: str, port: str, database: str):
+    def __init__(
+        self,
+        user: str,
+        password: str,
+        host: str,
+        port: str,
+        database: str,
+        verbose: bool = False,
+    ):
 
         self.user = user
         self.password = password
@@ -118,6 +209,10 @@ class WarehouseDataInteractor:
         self.port = port
         self.database = database
         self.engine = None
+
+        if verbose:
+            logging.basicConfig()
+            logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)
 
     def run_sql_query(self, query_name, query_params={}):
         """
@@ -244,8 +339,7 @@ class PostgresDataInteractor(WarehouseDataInteractor):
 class DataInteractor:
 
     def __init__(self):
-        self.static = StaticDataInteractor()
-        self.zip = ZipDataInteractor()
-        self.sheets = GoogleSheetsDataInteractor()
-        self.config = ConfigDataInteractor()
-        self.postgres = PostgresDataInteractor()
+        self.config = ConfigDataInteractor
+        self.static = StaticDataInteractor
+        self.sheets = GoogleSheetsDataInteractor
+        self.bigquery = BigQueryDataInteractor
