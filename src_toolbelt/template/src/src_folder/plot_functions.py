@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 
-# from $PROJECT_NAME$ import get_docs_path
+from $PROJECT_NAME$ import get_docs_path
 
 
 def colorful_barplot(

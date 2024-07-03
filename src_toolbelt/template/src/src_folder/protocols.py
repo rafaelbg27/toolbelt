@@ -5,9 +5,9 @@ import joblib
 import numpy as np
 import pandas as pd
 
-# from $PROJECT_NAME$.data_interactor import DataInteractor
-# from $PROJECT_NAME$.env_functions import get_models_path
-# from $PROJECT_NAME$.metrics import generate_metrics
+from $PROJECT_NAME$.data_interactor import DataInteractor
+from $PROJECT_NAME$.env_functions import get_models_path
+from $PROJECT_NAME$.metrics import generate_metrics
 
 
 class Model(ABC):

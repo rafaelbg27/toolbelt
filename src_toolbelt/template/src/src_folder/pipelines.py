@@ -1,22 +1,22 @@
 import logging
 
-# from $PROJECT_NAME$.protocols import PipelineStep
-# from $PROJECT_NAME$.transformers import (
-#     Binarizer,
-#     Binner,
-#     Cleaner,
-#     CustomTransformer,
-#     Dropper,
-#     Dumminizer,
-#     Encoder,
-#     FeatureTransformer,
-#     Filter,
-#     MinimumPercentageFilter,
-#     MissingInputer,
-#     Renamer,
-#     Scaler,
-#     Selector,
-# )
+from $PROJECT_NAME$.protocols import PipelineStep
+from $PROJECT_NAME$.transformers import (
+    Binarizer,
+    Binner,
+    Cleaner,
+    CustomTransformer,
+    Dropper,
+    Dumminizer,
+    Encoder,
+    FeatureTransformer,
+    Filter,
+    MinimumPercentageFilter,
+    MissingInputer,
+    Renamer,
+    Scaler,
+    Selector,
+)
 
 
 class DataCleaning(PipelineStep):

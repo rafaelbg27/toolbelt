@@ -6,8 +6,8 @@ import numpy as np
 import pandas as pd
 from unidecode import unidecode
 
-# from $PROJECT_NAME$.helper_functions import check_integrity
-# from $PROJECT_NAME$.protocols import Transformer
+from $PROJECT_NAME$.helper_functions import check_integrity
+from $PROJECT_NAME$.protocols import Transformer
 
 
 class Cleaner(Transformer):

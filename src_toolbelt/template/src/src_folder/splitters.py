@@ -2,7 +2,7 @@ from typing import Dict, List, Tuple, Type
 
 import pandas as pd
 
-# from $PROJECT_NAME$.protocols import Splitter
+from $PROJECT_NAME$.protocols import Splitter
 
 
 class WindowedWeeklySplitter(Splitter):

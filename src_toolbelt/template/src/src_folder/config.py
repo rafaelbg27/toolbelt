@@ -1,41 +1,56 @@
-import json
+import logging
 import os
-from typing import Literal
 
 from dotenv import load_dotenv
 
-# from $PROJECT_NAME$ import get_lib_path
+from $PROJECT_NAME$ import get_lib_path
 
 load_dotenv(get_lib_path(".env"))
 
 
-class Credentials:
+class Config:
+
+    _instance = None
+    _is_initialized = False
+
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super(Config, cls).__new__(cls)
+        return cls._instance
 
     def __init__(self):
-        pass
+        if not self._is_initialized:
+            self._load_env_vars()
+            self._configure_logger()
+            self._load_sensitive_env_variables()
+            self.logger.info("Env variables configured")
+            self._is_initialized = True
 
-    def get_credential(
-        self,
-        credential_name: str,
-        credential_type: Literal["str", "file", "file_path"] = "str",
-        credential_extension: str = "json",
-    ):
-        """
-        Get a credential from the environment
-        """
-        if credential_type == "str":
-            return os.getenv(credential_name)
+    def _load_env_vars(self):
+        self.ENV = os.getenv("ENV", "DEV")
 
-        if credential_type == "file":
-            try:
-                with open(
-                    get_lib_path(credential_name + "." + credential_extension), "r"
-                ) as read_file:
-                    return json.load(read_file)
-            except FileNotFoundError:
-                raise FileNotFoundError(
-                    f"File {credential_name}.{credential_extension} not found"
-                )
+        # Google
+        self.GCP_PROJECT = os.getenv("GCP_PROJECT", "insider-data-lake")
+        self.GCP_REGION = os.getenv("REGION", "us-central1")
 
-        if credential_type == "file_path":
-            return get_lib_path(credential_name + "." + credential_extension)
+        os.environ.setdefault("GCLOUD_PROJECT", self.GCP_PROJECT)
+
+        self.TRACKING_URI = os.getenv(
+            "TRACKING_URI", "https://mlflow.insiderstore.com.br"
+        )
+        self.MLFLOW_TRACKING_USERNAME = os.getenv("MLFLOW_TRACKING_USERNAME")
+        self.MLFLOW_TRACKING_PASSWORD = os.getenv("MLFLOW_TRACKING_PASSWORD")
+
+    def _configure_logger(self):
+        self.logger = logging.getLogger("Lib")
+        self.logger.setLevel("DEBUG")
+
+        # Create formatter and add it to the handlers
+        formatter = logging.Formatter(
+            "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+        )
+
+        # Create a console handler and add it to the logger
+        ch = logging.StreamHandler()
+        ch.setFormatter(formatter)
+        self.logger.addHandler(ch)

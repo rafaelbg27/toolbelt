@@ -1,6 +1,6 @@
 import pandas as pd
 
-# from $PROJECT_NAME$.protocols import Model
+from $PROJECT_NAME$.protocols import Model
 
 
 def load_and_extract_data() -> pd.DataFrame: ...

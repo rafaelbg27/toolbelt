@@ -2,7 +2,7 @@ from typing import Dict, Type
 
 from catboost import CatBoostRegressor
 
-# from $PROJECT_NAME$.protocols import Model
+from $PROJECT_NAME$.protocols import Model
 
 
 class CatBoostModel(Model):

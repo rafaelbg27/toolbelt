@@ -2,11 +2,11 @@ from typing import List, Tuple
 
 import numpy as np
 import pandas as pd
-from data_interactor import DataInteractor
 
-# from $PROJECT_NAME$.metrics import generate_metrics
-# from $PROJECT_NAME$.models import ModelClassLookupCallback
-# from $PROJECT_NAME$.splitters import SplitterClassLookupCallback
+from $PROJECT_NAME$.data_interactor import DataInteractor
+from $PROJECT_NAME$.metrics import generate_metrics
+from $PROJECT_NAME$.models import ModelClassLookupCallback
+from $PROJECT_NAME$.splitters import SplitterClassLookupCallback
 
 
 class SplitterInteractor:
